@@ -1,0 +1,1350 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>n8n Flow Viewer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #d0d5dd;
+      --line-strong: #98a2b3;
+      --blue: #2563eb;
+      --green: #059669;
+      --red: #dc2626;
+      --orange: #d97706;
+      --purple: #7c3aed;
+      --slate: #475569;
+      --shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .actions,
+    .graph-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      cursor: pointer;
+      min-height: 36px;
+      padding: 0 12px;
+      transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+    }
+
+    .button:hover,
+    .button:focus-visible {
+      border-color: var(--line-strong);
+      background: #f9fafb;
+      outline: none;
+    }
+
+    .button.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .button.primary:hover,
+    .button.primary:focus-visible {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+
+    .icon-button {
+      width: 36px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-weight: 700;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: minmax(300px, 400px) minmax(0, 1fr) minmax(300px, 380px);
+      gap: 16px;
+      padding: 16px;
+      min-height: calc(100vh - 77px);
+    }
+
+    .editor-pane,
+    .graph-pane,
+    .detail-pane {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .editor-pane {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .pane-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      resize: none;
+      border: 0;
+      padding: 16px;
+      color: #101828;
+      background: #fcfcfd;
+      line-height: 1.45;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .status {
+      min-height: 42px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status.error {
+      color: #b42318;
+      background: #fff4f2;
+    }
+
+    .status.ok {
+      color: #027a48;
+      background: #f6fef9;
+    }
+
+    .graph-pane {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .detail-pane {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .node-details {
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .detail-empty {
+      display: grid;
+      min-height: 220px;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .detail-heading {
+      margin-bottom: 14px;
+    }
+
+    .detail-name {
+      margin: 0 0 6px;
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .detail-type {
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .detail-grid {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 16px;
+      padding: 0;
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .detail-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .detail-value {
+      color: var(--text);
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .detail-section {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .detail-section h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .json-block,
+    .text-block {
+      margin: 0;
+      overflow: auto;
+      max-height: 360px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #101828;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .connection-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .connection-list li {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fafb;
+      color: #344054;
+      font-size: 13px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .graph-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .summary {
+      color: var(--muted);
+      font-size: 13px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .graph-stage {
+      min-height: 520px;
+      background:
+        linear-gradient(#eef2f6 1px, transparent 1px),
+        linear-gradient(90deg, #eef2f6 1px, transparent 1px);
+      background-size: 28px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    svg.dragging {
+      cursor: grabbing;
+    }
+
+    .edge {
+      fill: none;
+      stroke: #667085;
+      stroke-width: 2.4;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .node {
+      cursor: grab;
+    }
+
+    .node.dragging {
+      cursor: grabbing;
+    }
+
+    .node-card {
+      fill: #ffffff;
+      stroke: #cbd5e1;
+      stroke-width: 1.2;
+      filter: drop-shadow(0 5px 10px rgba(16, 24, 40, 0.12));
+    }
+
+    .node-card:hover,
+    .node:focus .node-card {
+      stroke: #344054;
+    }
+
+    .node.dragging .node-card {
+      stroke: var(--blue);
+      stroke-width: 2;
+    }
+
+    .node.selected .node-card {
+      stroke: var(--blue);
+      stroke-width: 2.2;
+    }
+
+    .node-title {
+      fill: #101828;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .node-type {
+      fill: #667085;
+      font-size: 11px;
+    }
+
+    .node-index {
+      fill: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      fill: #667085;
+      font-size: 15px;
+    }
+
+    @media (max-width: 1180px) {
+      .app-shell {
+        grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+      }
+
+      .detail-pane {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .topbar,
+      .graph-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      textarea,
+      .graph-stage,
+      svg {
+        min-height: 430px;
+      }
+
+      .detail-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>n8n Flow Viewer</h1>
+      <p class="subtitle">Pega un workflow exportado de n8n y mira el flujo como grafo.</p>
+    </div>
+    <div class="actions" aria-label="Acciones del workflow">
+      <button class="button primary" id="renderButton" type="button">Graficar</button>
+      <button class="button" id="sampleButton" type="button">Ejemplo</button>
+      <button class="button" id="clearButton" type="button">Limpiar</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="editor-pane" aria-label="Editor JSON">
+      <label class="pane-title" for="workflowInput">
+        <span>JSON del workflow</span>
+        <span class="hint">nodos y conexiones</span>
+      </label>
+      <textarea id="workflowInput" spellcheck="false"></textarea>
+      <div class="status" id="status" role="status" aria-live="polite">Listo para graficar.</div>
+    </section>
+
+    <section class="graph-pane" aria-label="Grafo del workflow">
+      <div class="graph-toolbar">
+        <div class="summary" id="summary">Sin workflow cargado.</div>
+        <div class="graph-actions" aria-label="Controles del grafo">
+          <button class="button" id="fitButton" type="button">Ajustar</button>
+          <button class="button icon-button" id="zoomInButton" type="button" title="Acercar" aria-label="Acercar">+</button>
+          <button class="button icon-button" id="zoomOutButton" type="button" title="Alejar" aria-label="Alejar">-</button>
+        </div>
+      </div>
+      <div class="graph-stage">
+        <svg id="graph" role="img" aria-label="Grafo del workflow n8n"></svg>
+      </div>
+    </section>
+
+    <section class="detail-pane" aria-label="Detalle del nodo">
+      <div class="pane-title">
+        <span>Detalle del nodo</span>
+        <span class="hint" id="detailHint">Selecciona un nodo</span>
+      </div>
+      <div class="node-details" id="nodeDetails"></div>
+    </section>
+  </main>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const MAX_INPUT_CHARS = 2_000_000;
+    const MAX_NODES = 220;
+    const MAX_EDGES = 1200;
+    const NODE_WIDTH = 190;
+    const NODE_HEIGHT = 76;
+    const H_GAP = 120;
+    const V_GAP = 56;
+    const COLORS = {
+      trigger: "#2563eb",
+      logic: "#dc2626",
+      data: "#059669",
+      message: "#d97706",
+      code: "#7c3aed",
+      other: "#475569"
+    };
+
+    const sampleWorkflow = {
+      name: "Demo flujo simple",
+      nodes: [
+        {
+          id: "1",
+          name: "Webhook",
+          type: "n8n-nodes-base.webhook",
+          typeVersion: 1,
+          position: [160, 220]
+        },
+        {
+          id: "2",
+          name: "Validar payload",
+          type: "n8n-nodes-base.if",
+          typeVersion: 2,
+          position: [430, 220]
+        },
+        {
+          id: "3",
+          name: "Guardar item",
+          type: "n8n-nodes-base.httpRequest",
+          typeVersion: 4,
+          position: [710, 140]
+        },
+        {
+          id: "4",
+          name: "Avisar error",
+          type: "n8n-nodes-base.slack",
+          typeVersion: 2,
+          position: [710, 310]
+        }
+      ],
+      connections: {
+        Webhook: {
+          main: [
+            [
+              {
+                node: "Validar payload",
+                type: "main",
+                index: 0
+              }
+            ]
+          ]
+        },
+        "Validar payload": {
+          main: [
+            [
+              {
+                node: "Guardar item",
+                type: "main",
+                index: 0
+              }
+            ],
+            [
+              {
+                node: "Avisar error",
+                type: "main",
+                index: 0
+              }
+            ]
+          ]
+        }
+      }
+    };
+
+    const input = document.getElementById("workflowInput");
+    const statusEl = document.getElementById("status");
+    const summaryEl = document.getElementById("summary");
+    const svg = document.getElementById("graph");
+    const renderButton = document.getElementById("renderButton");
+    const sampleButton = document.getElementById("sampleButton");
+    const clearButton = document.getElementById("clearButton");
+    const fitButton = document.getElementById("fitButton");
+    const zoomInButton = document.getElementById("zoomInButton");
+    const zoomOutButton = document.getElementById("zoomOutButton");
+    const nodeDetailsEl = document.getElementById("nodeDetails");
+    const detailHintEl = document.getElementById("detailHint");
+
+    let graphState = {
+      nodes: [],
+      edges: [],
+      baseViewBox: null,
+      viewBox: { x: 0, y: 0, width: 1000, height: 620 },
+      warnings: [],
+      selectedNodeIndex: null
+    };
+    let panState = null;
+    let nodeDragState = null;
+
+    input.value = JSON.stringify(sampleWorkflow, null, 2);
+    renderWorkflow();
+
+    renderButton.addEventListener("click", renderWorkflow);
+    sampleButton.addEventListener("click", () => {
+      input.value = JSON.stringify(sampleWorkflow, null, 2);
+      renderWorkflow();
+    });
+    clearButton.addEventListener("click", () => {
+      input.value = "";
+      graphState = {
+        nodes: [],
+        edges: [],
+        baseViewBox: null,
+        viewBox: { x: 0, y: 0, width: 1000, height: 620 },
+        warnings: [],
+        selectedNodeIndex: null
+      };
+      drawEmptyState("Pega un JSON de n8n y presiona Graficar.");
+      drawNodeDetails();
+      setStatus("Listo para graficar.", "neutral");
+      summaryEl.textContent = "Sin workflow cargado.";
+    });
+    fitButton.addEventListener("click", fitGraph);
+    zoomInButton.addEventListener("click", () => zoomGraph(0.82));
+    zoomOutButton.addEventListener("click", () => zoomGraph(1.22));
+
+    svg.addEventListener("pointerdown", event => {
+      if (!graphState.baseViewBox) {
+        return;
+      }
+
+      const nodeGroup = event.target.closest ? event.target.closest(".node") : null;
+      if (nodeGroup) {
+        const nodeIndex = Number(nodeGroup.getAttribute("data-node-index"));
+        const node = graphState.nodes.find(item => item.index === nodeIndex);
+        if (!node) {
+          return;
+        }
+        event.preventDefault();
+        svg.setPointerCapture(event.pointerId);
+        graphState.selectedNodeIndex = nodeIndex;
+        drawNodeDetails();
+        nodeDragState = {
+          pointerId: event.pointerId,
+          nodeIndex,
+          originX: node.x,
+          originY: node.y,
+          startPoint: clientToSvgPoint(event)
+        };
+        drawGraph();
+        return;
+      }
+
+      svg.setPointerCapture(event.pointerId);
+      svg.classList.add("dragging");
+      panState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        viewBox: { ...graphState.viewBox }
+      };
+    });
+
+    svg.addEventListener("pointermove", event => {
+      if (nodeDragState && nodeDragState.pointerId === event.pointerId) {
+        const node = graphState.nodes.find(item => item.index === nodeDragState.nodeIndex);
+        if (!node) {
+          return;
+        }
+        const currentPoint = clientToSvgPoint(event);
+        node.x = nodeDragState.originX + currentPoint.x - nodeDragState.startPoint.x;
+        node.y = nodeDragState.originY + currentPoint.y - nodeDragState.startPoint.y;
+        graphState.baseViewBox = getBounds(graphState.nodes);
+        drawGraph();
+        return;
+      }
+
+      if (!panState || panState.pointerId !== event.pointerId) {
+        return;
+      }
+      const rect = svg.getBoundingClientRect();
+      const dx = (event.clientX - panState.startX) * (panState.viewBox.width / rect.width);
+      const dy = (event.clientY - panState.startY) * (panState.viewBox.height / rect.height);
+      setViewBox({
+        x: panState.viewBox.x - dx,
+        y: panState.viewBox.y - dy,
+        width: panState.viewBox.width,
+        height: panState.viewBox.height
+      });
+    });
+
+    svg.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      const nodeGroup = event.target.closest ? event.target.closest(".node") : null;
+      if (!nodeGroup) {
+        return;
+      }
+      event.preventDefault();
+      graphState.selectedNodeIndex = Number(nodeGroup.getAttribute("data-node-index"));
+      drawGraph();
+      drawNodeDetails();
+    });
+
+    svg.addEventListener("pointerup", endInteraction);
+    svg.addEventListener("pointercancel", endInteraction);
+    svg.addEventListener("wheel", event => {
+      if (!graphState.baseViewBox) {
+        return;
+      }
+      event.preventDefault();
+      zoomGraph(event.deltaY < 0 ? 0.9 : 1.1);
+    }, { passive: false });
+
+    function renderWorkflow() {
+      try {
+        const workflow = parseWorkflow(input.value);
+        graphState = layoutWorkflow(workflow);
+        drawGraph();
+        drawNodeDetails();
+        const warningText = graphState.warnings.length ? ` ${graphState.warnings.join(" ")}` : "";
+        setStatus(`Workflow graficado: ${graphState.nodes.length} nodos, ${graphState.edges.length} conexiones.${warningText}`, "ok");
+        summaryEl.textContent = `${workflow.name || "Workflow sin nombre"} - ${graphState.nodes.length} nodos - ${graphState.edges.length} conexiones`;
+      } catch (error) {
+        graphState = {
+          nodes: [],
+          edges: [],
+          baseViewBox: null,
+          viewBox: { x: 0, y: 0, width: 1000, height: 620 },
+          warnings: [],
+          selectedNodeIndex: null
+        };
+        drawEmptyState("No se pudo graficar el workflow.");
+        drawNodeDetails();
+        setStatus(error.message, "error");
+        summaryEl.textContent = "Revisa el JSON ingresado.";
+      }
+    }
+
+    function parseWorkflow(rawValue) {
+      const raw = String(rawValue || "").trim();
+      if (!raw) {
+        throw new Error("Pega un JSON exportado de n8n antes de graficar.");
+      }
+      if (raw.length > MAX_INPUT_CHARS) {
+        throw new Error("El JSON es demasiado grande para este visor local.");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("El texto no es JSON valido.");
+      }
+
+      const workflow = parsed && parsed.workflow && Array.isArray(parsed.workflow.nodes)
+        ? parsed.workflow
+        : parsed;
+      const workflowName = getWorkflowName(parsed, workflow);
+
+      if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
+        throw new Error("El JSON debe describir un workflow de n8n.");
+      }
+      if (!Array.isArray(workflow.nodes)) {
+        throw new Error("No encontre el array nodes del workflow.");
+      }
+      if (workflow.nodes.length > MAX_NODES) {
+        throw new Error(`Este visor acepta hasta ${MAX_NODES} nodos.`);
+      }
+
+      const nodes = workflow.nodes.map((node, index) => normalizeNode(node, index));
+      const uniqueNames = new Set(nodes.map(node => node.name));
+      if (uniqueNames.size !== nodes.length) {
+        throw new Error("Los nombres de nodos deben ser unicos para leer connections de n8n.");
+      }
+
+      const knownNodeNames = new Set(nodes.map(node => node.name));
+      const edges = parseConnections(workflow.connections, knownNodeNames);
+
+      return {
+        name: workflowName,
+        nodes,
+        edges
+      };
+    }
+
+    function normalizeNode(node, index) {
+      if (!node || typeof node !== "object" || Array.isArray(node)) {
+        throw new Error(`El nodo ${index + 1} no tiene formato valido.`);
+      }
+
+      const name = getCleanString(node.name, `Nodo ${index + 1}`, 120);
+      const type = getCleanString(node.type, "tipo-desconocido", 140);
+      const id = getCleanString(node.id, name, 120);
+      const position = Array.isArray(node.position) && node.position.length >= 2
+        ? [Number(node.position[0]), Number(node.position[1])]
+        : null;
+
+      return {
+        id,
+        index,
+        name,
+        type,
+        typeVersion: node.typeVersion === undefined ? "" : String(node.typeVersion),
+        webhookId: getCleanString(node.webhookId, "", 140),
+        notes: getCleanString(node.notes, "", 4000),
+        notesInFlow: node.notesInFlow === true,
+        parameters: redactForDetails(node.parameters || {}),
+        credentials: node.credentials ? "[oculto]" : null,
+        position: position && position.every(Number.isFinite) ? position : null
+      };
+    }
+
+    function parseConnections(connections, knownNodeNames) {
+      if (!connections || typeof connections !== "object" || Array.isArray(connections)) {
+        return [];
+      }
+
+      const edges = [];
+      for (const [sourceName, sourceConnections] of Object.entries(connections)) {
+        if (!knownNodeNames.has(sourceName) || !sourceConnections || typeof sourceConnections !== "object") {
+          continue;
+        }
+        for (const [channelName, channelOutputs] of Object.entries(sourceConnections)) {
+          if (!Array.isArray(channelOutputs)) {
+            continue;
+          }
+          channelOutputs.forEach((targets, outputIndex) => {
+            if (!Array.isArray(targets)) {
+              return;
+            }
+            targets.forEach(target => {
+              if (!target || typeof target !== "object") {
+                return;
+              }
+              const targetName = typeof target.node === "string" ? target.node : "";
+              if (!knownNodeNames.has(targetName)) {
+                return;
+              }
+              edges.push({
+                from: sourceName,
+                to: targetName,
+                channel: channelName,
+                outputIndex,
+                inputIndex: Number.isInteger(target.index) ? target.index : 0
+              });
+            });
+          });
+        }
+      }
+
+      if (edges.length > MAX_EDGES) {
+        throw new Error(`Este visor acepta hasta ${MAX_EDGES} conexiones.`);
+      }
+      return edges;
+    }
+
+    function layoutWorkflow(workflow) {
+      const allHavePosition = workflow.nodes.every(node => node.position);
+      const nodes = allHavePosition
+        ? workflow.nodes.map(node => ({
+          ...node,
+          x: node.position[0],
+          y: node.position[1]
+        }))
+        : autoLayout(workflow.nodes, workflow.edges);
+
+      const bounds = getBounds(nodes);
+      return {
+        nodes,
+        edges: workflow.edges,
+        baseViewBox: bounds,
+        viewBox: { ...bounds },
+        warnings: allHavePosition ? [] : ["Algunos nodos no tenian position; use una distribucion automatica."],
+        selectedNodeIndex: nodes.length ? nodes[0].index : null
+      };
+    }
+
+    function autoLayout(nodes, edges) {
+      const names = nodes.map(node => node.name);
+      const adjacency = new Map(names.map(name => [name, []]));
+      const indegree = new Map(names.map(name => [name, 0]));
+
+      edges.forEach(edge => {
+        adjacency.get(edge.from).push(edge.to);
+        indegree.set(edge.to, indegree.get(edge.to) + 1);
+      });
+
+      const levels = new Map();
+      const queue = names.filter(name => indegree.get(name) === 0);
+      queue.forEach(name => levels.set(name, 0));
+
+      while (queue.length) {
+        const current = queue.shift();
+        const nextLevel = levels.get(current) + 1;
+        adjacency.get(current).forEach(next => {
+          if (!levels.has(next) || nextLevel > levels.get(next)) {
+            levels.set(next, nextLevel);
+          }
+          indegree.set(next, indegree.get(next) - 1);
+          if (indegree.get(next) === 0) {
+            queue.push(next);
+          }
+        });
+      }
+
+      nodes.forEach((node, index) => {
+        if (!levels.has(node.name)) {
+          levels.set(node.name, Math.floor(index / 6));
+        }
+      });
+
+      const grouped = new Map();
+      nodes.forEach(node => {
+        const level = levels.get(node.name);
+        if (!grouped.has(level)) {
+          grouped.set(level, []);
+        }
+        grouped.get(level).push(node);
+      });
+
+      return nodes.map(node => {
+        const level = levels.get(node.name);
+        const levelNodes = grouped.get(level);
+        const row = levelNodes.findIndex(item => item.name === node.name);
+        const levelHeight = levelNodes.length * (NODE_HEIGHT + V_GAP) - V_GAP;
+        return {
+          ...node,
+          x: 120 + level * (NODE_WIDTH + H_GAP),
+          y: 120 + row * (NODE_HEIGHT + V_GAP) - Math.max(0, levelHeight - NODE_HEIGHT) / 2
+        };
+      });
+    }
+
+    function drawGraph() {
+      svg.replaceChildren(createDefs());
+      const viewport = svgEl("g", { class: "viewport" });
+      const nodeByName = new Map(graphState.nodes.map(node => [node.name, node]));
+
+      graphState.edges.forEach((edge, index) => {
+        const from = nodeByName.get(edge.from);
+        const to = nodeByName.get(edge.to);
+        if (from && to) {
+          viewport.appendChild(drawEdge(from, to, edge, index));
+        }
+      });
+
+      graphState.nodes.forEach(node => {
+        viewport.appendChild(drawNode(node));
+      });
+
+      svg.appendChild(viewport);
+      setViewBox(graphState.viewBox);
+    }
+
+    function drawNode(node) {
+      const nodeClasses = ["node"];
+      if (graphState.selectedNodeIndex === node.index) {
+        nodeClasses.push("selected");
+      }
+      if (nodeDragState && nodeDragState.nodeIndex === node.index) {
+        nodeClasses.push("dragging");
+      }
+      const group = svgEl("g", {
+        class: nodeClasses.join(" "),
+        transform: `translate(${node.x} ${node.y})`,
+        "data-node-index": node.index,
+        tabindex: "0",
+        role: "listitem",
+        "aria-label": `${node.name}, ${node.type}`
+      });
+      group.appendChild(svgEl("title", {}, `${node.name} - ${node.type}`));
+      group.appendChild(svgEl("rect", {
+        class: "node-card",
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
+        rx: "8"
+      }));
+      group.appendChild(svgEl("rect", {
+        width: "7",
+        height: NODE_HEIGHT,
+        rx: "4",
+        fill: colorForType(node.type)
+      }));
+      group.appendChild(svgEl("circle", {
+        cx: "31",
+        cy: "26",
+        r: "15",
+        fill: colorForType(node.type)
+      }));
+      group.appendChild(svgEl("text", {
+        class: "node-index",
+        x: "31",
+        y: "30",
+        "text-anchor": "middle"
+      }, String(node.index + 1)));
+      group.appendChild(svgEl("text", {
+        class: "node-title",
+        x: "56",
+        y: "28"
+      }, truncateMiddle(node.name, 24)));
+      group.appendChild(svgEl("text", {
+        class: "node-type",
+        x: "56",
+        y: "49"
+      }, truncateMiddle(shortType(node.type), 30)));
+      return group;
+    }
+
+    function drawNodeDetails() {
+      nodeDetailsEl.replaceChildren();
+      const node = graphState.nodes.find(item => item.index === graphState.selectedNodeIndex);
+      if (!node) {
+        detailHintEl.textContent = "Selecciona un nodo";
+        nodeDetailsEl.appendChild(htmlEl("div", { class: "detail-empty" }, "Selecciona un nodo del grafo para ver sus parametros y metadatos."));
+        return;
+      }
+
+      detailHintEl.textContent = `Nodo ${node.index + 1}`;
+
+      const heading = htmlEl("div", { class: "detail-heading" });
+      heading.appendChild(htmlEl("h2", { class: "detail-name" }, node.name));
+      heading.appendChild(htmlEl("div", { class: "detail-type" }, node.type));
+      nodeDetailsEl.appendChild(heading);
+
+      const metadata = htmlEl("dl", { class: "detail-grid" });
+      appendDetailRow(metadata, "ID", node.id);
+      appendDetailRow(metadata, "Version", node.typeVersion || "sin version");
+      appendDetailRow(metadata, "Posicion", `${Math.round(node.x)}, ${Math.round(node.y)}`);
+      if (node.webhookId) {
+        appendDetailRow(metadata, "Webhook", node.webhookId);
+      }
+      if (node.notesInFlow) {
+        appendDetailRow(metadata, "Notas", "visibles en el flujo");
+      }
+      nodeDetailsEl.appendChild(metadata);
+
+      appendJsonSection(nodeDetailsEl, "Parametros", node.parameters, "Sin parametros configurados.");
+      if (node.credentials) {
+        appendJsonSection(nodeDetailsEl, "Credenciales", node.credentials, "Sin credenciales configuradas.");
+      }
+      if (node.notes) {
+        appendTextSection(nodeDetailsEl, "Notas", node.notes);
+      }
+      appendConnectionSection(nodeDetailsEl, node);
+    }
+
+    function appendDetailRow(parent, label, value) {
+      const row = htmlEl("div", { class: "detail-row" });
+      row.appendChild(htmlEl("dt", { class: "detail-label" }, label));
+      row.appendChild(htmlEl("dd", { class: "detail-value" }, String(value)));
+      parent.appendChild(row);
+    }
+
+    function appendJsonSection(parent, title, value, emptyMessage) {
+      const section = htmlEl("section", { class: "detail-section" });
+      section.appendChild(htmlEl("h2", {}, title));
+      const isObject = value && typeof value === "object";
+      const hasContent = isObject ? Object.keys(value).length > 0 : value !== null && value !== undefined && value !== "";
+      const displayValue = isObject ? JSON.stringify(value, null, 2) : String(value);
+      section.appendChild(htmlEl("pre", { class: "json-block" }, hasContent ? displayValue : emptyMessage));
+      parent.appendChild(section);
+    }
+
+    function appendTextSection(parent, title, value) {
+      const section = htmlEl("section", { class: "detail-section" });
+      section.appendChild(htmlEl("h2", {}, title));
+      section.appendChild(htmlEl("pre", { class: "text-block" }, value));
+      parent.appendChild(section);
+    }
+
+    function appendConnectionSection(parent, node) {
+      const incoming = graphState.edges.filter(edge => edge.to === node.name).map(edge => `${edge.from} -> ${node.name}`);
+      const outgoing = graphState.edges.filter(edge => edge.from === node.name).map(edge => `${node.name} -> ${edge.to}`);
+      const section = htmlEl("section", { class: "detail-section" });
+      section.appendChild(htmlEl("h2", {}, "Conexiones"));
+      const list = htmlEl("ul", { class: "connection-list" });
+      const entries = [...incoming, ...outgoing];
+      if (!entries.length) {
+        list.appendChild(htmlEl("li", {}, "Sin conexiones."));
+      } else {
+        entries.forEach(entry => list.appendChild(htmlEl("li", {}, entry)));
+      }
+      section.appendChild(list);
+      parent.appendChild(section);
+    }
+
+    function drawEdge(from, to, edge, index) {
+      const fromX = from.x + NODE_WIDTH;
+      const fromY = from.y + NODE_HEIGHT / 2 + offsetForParallel(index);
+      const toX = to.x;
+      const toY = to.y + NODE_HEIGHT / 2 + offsetForParallel(index);
+      const path = svgEl("path", {
+        class: "edge",
+        d: edgePath(fromX, fromY, toX, toY),
+        "marker-end": "url(#arrow)"
+      });
+      path.appendChild(svgEl("title", {}, `${edge.from} -> ${edge.to}`));
+      return path;
+    }
+
+    function edgePath(fromX, fromY, toX, toY) {
+      if (toX <= fromX) {
+        const loop = Math.max(90, Math.abs(toY - fromY) + 60);
+        return `M ${fromX} ${fromY} C ${fromX + loop} ${fromY}, ${toX - loop} ${toY}, ${toX} ${toY}`;
+      }
+      const curve = Math.max(80, (toX - fromX) * 0.48);
+      return `M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`;
+    }
+
+    function drawEmptyState(message) {
+      svg.replaceChildren();
+      const width = 1000;
+      const height = 620;
+      const group = svgEl("g");
+      group.appendChild(svgEl("text", {
+        class: "empty-state",
+        x: width / 2,
+        y: height / 2,
+        "text-anchor": "middle"
+      }, message));
+      svg.appendChild(group);
+      setViewBox({ x: 0, y: 0, width, height });
+    }
+
+    function fitGraph() {
+      if (!graphState.baseViewBox) {
+        return;
+      }
+      graphState.viewBox = { ...graphState.baseViewBox };
+      setViewBox(graphState.viewBox);
+    }
+
+    function zoomGraph(factor) {
+      if (!graphState.baseViewBox) {
+        return;
+      }
+      const current = graphState.viewBox;
+      const centerX = current.x + current.width / 2;
+      const centerY = current.y + current.height / 2;
+      const nextWidth = clamp(current.width * factor, 260, graphState.baseViewBox.width * 4);
+      const nextHeight = clamp(current.height * factor, 180, graphState.baseViewBox.height * 4);
+      setViewBox({
+        x: centerX - nextWidth / 2,
+        y: centerY - nextHeight / 2,
+        width: nextWidth,
+        height: nextHeight
+      });
+    }
+
+    function setViewBox(nextViewBox) {
+      graphState.viewBox = nextViewBox;
+      svg.setAttribute("viewBox", `${nextViewBox.x} ${nextViewBox.y} ${nextViewBox.width} ${nextViewBox.height}`);
+    }
+
+    function endInteraction(event) {
+      if (nodeDragState && nodeDragState.pointerId === event.pointerId) {
+        nodeDragState = null;
+        graphState.baseViewBox = getBounds(graphState.nodes);
+        drawGraph();
+        drawNodeDetails();
+      }
+
+      if (panState && panState.pointerId === event.pointerId) {
+        panState = null;
+        svg.classList.remove("dragging");
+      }
+
+      if (svg.hasPointerCapture && svg.hasPointerCapture(event.pointerId)) {
+        svg.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    function clientToSvgPoint(event) {
+      const rect = svg.getBoundingClientRect();
+      const width = Math.max(1, rect.width);
+      const height = Math.max(1, rect.height);
+      return {
+        x: graphState.viewBox.x + ((event.clientX - rect.left) / width) * graphState.viewBox.width,
+        y: graphState.viewBox.y + ((event.clientY - rect.top) / height) * graphState.viewBox.height
+      };
+    }
+
+    function getBounds(nodes) {
+      if (!nodes.length) {
+        return { x: 0, y: 0, width: 1000, height: 620 };
+      }
+      const padding = 100;
+      const minX = Math.min(...nodes.map(node => node.x));
+      const minY = Math.min(...nodes.map(node => node.y));
+      const maxX = Math.max(...nodes.map(node => node.x + NODE_WIDTH));
+      const maxY = Math.max(...nodes.map(node => node.y + NODE_HEIGHT));
+      return {
+        x: minX - padding,
+        y: minY - padding,
+        width: Math.max(520, maxX - minX + padding * 2),
+        height: Math.max(360, maxY - minY + padding * 2)
+      };
+    }
+
+    function createDefs() {
+      const defs = svgEl("defs");
+      const marker = svgEl("marker", {
+        id: "arrow",
+        viewBox: "0 0 10 10",
+        refX: "9",
+        refY: "5",
+        markerWidth: "7",
+        markerHeight: "7",
+        orient: "auto-start-reverse"
+      });
+      marker.appendChild(svgEl("path", {
+        d: "M 0 0 L 10 5 L 0 10 z",
+        fill: "#667085"
+      }));
+      defs.appendChild(marker);
+      return defs;
+    }
+
+    function getCleanString(value, fallback, maxLength) {
+      if (typeof value !== "string") {
+        return fallback;
+      }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return fallback;
+      }
+      return trimmed.slice(0, maxLength);
+    }
+
+    function getWorkflowName(parsed, workflow) {
+      const workflowName = typeof workflow.name === "string" ? workflow.name.trim() : "";
+      const wrapperName = parsed && typeof parsed.name === "string" ? parsed.name.trim() : "";
+      return (workflowName || wrapperName).slice(0, 120);
+    }
+
+    function redactForDetails(value, key = "", depth = 0) {
+      if (isSensitiveKey(key)) {
+        return "[oculto]";
+      }
+      if (depth > 8) {
+        return "[limite de profundidad]";
+      }
+      if (value === null || typeof value === "number" || typeof value === "boolean") {
+        return value;
+      }
+      if (typeof value === "string") {
+        return value.length > 5000 ? `${value.slice(0, 5000)}... [truncado]` : value;
+      }
+      if (Array.isArray(value)) {
+        const items = value.slice(0, 200).map(item => redactForDetails(item, key, depth + 1));
+        if (value.length > 200) {
+          items.push(`[${value.length - 200} items mas]`);
+        }
+        return items;
+      }
+      if (value && typeof value === "object") {
+        const output = Object.create(null);
+        const entries = Object.entries(value);
+        entries.slice(0, 200).forEach(([childKey, childValue]) => {
+          output[childKey] = redactForDetails(childValue, childKey, depth + 1);
+        });
+        if (entries.length > 200) {
+          output.truncado = `${entries.length - 200} campos mas`;
+        }
+        return output;
+      }
+      return String(value);
+    }
+
+    function isSensitiveKey(key) {
+      return /password|passwd|secret|token|authorization|credential|api[_-]?key|private[_-]?key|client[_-]?secret|session|cookie/i.test(String(key));
+    }
+
+    function shortType(type) {
+      return type.replace(/^n8n-nodes-base\./, "").replace(/^@n8n\/n8n-nodes-langchain\./, "langchain.");
+    }
+
+    function colorForType(type) {
+      const value = String(type).toLowerCase();
+      if (value.includes("trigger") || value.includes("webhook") || value.includes("start")) {
+        return COLORS.trigger;
+      }
+      if (value.includes("if") || value.includes("switch") || value.includes("merge") || value.includes("filter")) {
+        return COLORS.logic;
+      }
+      if (value.includes("http") || value.includes("database") || value.includes("postgres") || value.includes("mysql")) {
+        return COLORS.data;
+      }
+      if (value.includes("slack") || value.includes("mail") || value.includes("telegram") || value.includes("message")) {
+        return COLORS.message;
+      }
+      if (value.includes("code") || value.includes("function")) {
+        return COLORS.code;
+      }
+      return COLORS.other;
+    }
+
+    function offsetForParallel(index) {
+      return (index % 3 - 1) * 4;
+    }
+
+    function truncateMiddle(value, maxLength) {
+      const text = String(value);
+      if (text.length <= maxLength) {
+        return text;
+      }
+      const left = Math.ceil((maxLength - 1) * 0.62);
+      const right = Math.floor((maxLength - 1) * 0.38);
+      return `${text.slice(0, left)}...${text.slice(text.length - right)}`;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function setStatus(message, tone) {
+      statusEl.textContent = message;
+      statusEl.className = "status";
+      if (tone === "error" || tone === "ok") {
+        statusEl.classList.add(tone);
+      }
+    }
+
+    function svgEl(tagName, attributes = {}, text = "") {
+      const element = document.createElementNS(SVG_NS, tagName);
+      for (const [name, value] of Object.entries(attributes)) {
+        element.setAttribute(name, String(value));
+      }
+      if (text) {
+        element.textContent = text;
+      }
+      return element;
+    }
+
+    function htmlEl(tagName, attributes = {}, text = "") {
+      const element = document.createElement(tagName);
+      for (const [name, value] of Object.entries(attributes)) {
+        element.setAttribute(name, String(value));
+      }
+      if (text) {
+        element.textContent = text;
+      }
+      return element;
+    }
+  </script>
+</body>
+</html>
